@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>N7 Company CRM</title>
+
+<style>
+*{margin:0;padding:0;box-sizing:border-box;font-family:'Segoe UI';}
+
+body{
+  background:linear-gradient(180deg,#2d0052,#1a0033);
+  color:white;
+}
+
+/* HEADER */
+.header{
+  padding:20px;
+  display:flex;
+  align-items:center;
+  gap:12px;
+  border-bottom:1px solid rgba(255,255,255,0.1);
+}
+
+.logo{
+  width:42px;height:42px;
+  border-radius:12px;
+  background:linear-gradient(135deg,#9333ea,#c084fc);
+  display:flex;align-items:center;justify-content:center;
+  font-weight:bold;
+}
+
+/* CONTAINER */
+.container{
+  max-width:750px;
+  margin:auto;
+  padding:20px;
+}
+
+/* DASHBOARD */
+.dashboard{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:12px;
+  margin-bottom:15px;
+}
+
+.card-mini{
+  background:rgba(255,255,255,0.06);
+  padding:16px;
+  border-radius:16px;
+}
+
+.card-mini h3{
+  font-size:12px;
+  opacity:0.7;
+}
+
+.card-mini p{
+  font-size:22px;
+  font-weight:bold;
+}
+
+/* ALERTA */
+.alerta{
+  background:linear-gradient(135deg,#ef4444,#dc2626);
+  padding:14px;
+  border-radius:12px;
+  margin-bottom:15px;
+  font-size:14px;
+}
+
+/* CARD */
+.card{
+  background:rgba(255,255,255,0.05);
+  padding:18px;
+  border-radius:18px;
+  margin-bottom:15px;
+}
+
+/* INPUT */
+input, textarea{
+  width:100%;
+  padding:13px;
+  margin-top:10px;
+  border-radius:14px;
+  border:none;
+  background:rgba(0,0,0,0.35);
+  color:white;
+  outline:none;
+}
+
+/* BUTTON */
+.btn{
+  width:100%;
+  padding:14px;
+  margin-top:10px;
+  border:none;
+  border-radius:14px;
+  font-weight:600;
+  cursor:pointer;
+  background:linear-gradient(135deg,#9333ea,#c084fc);
+  color:white;
+}
+
+.btn-outline{
+  background:transparent;
+  border:1px solid rgba(255,255,255,0.2);
+}
+
+/* LIST */
+.lead{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  padding:12px;
+  border-radius:14px;
+  margin-top:10px;
+  background:rgba(255,255,255,0.04);
+  transition:0.3s;
+}
+
+.lead.inativo{
+  border:1px solid rgba(239,68,68,0.6);
+}
+
+.lead-info{
+  flex:1;
+  margin-left:10px;
+}
+
+.small{
+  font-size:11px;
+  opacity:0.7;
+}
+
+/* ICON */
+.icon-btn{
+  background:none;
+  border:none;
+  cursor:pointer;
+  color:white;
+}
+
+/* TOAST */
+.toast{
+  position:fixed;
+  bottom:20px;
+  right:20px;
+  background:linear-gradient(135deg,#9333ea,#c084fc);
+  padding:16px 20px;
+  border-radius:14px;
+  font-weight:500;
+  box-shadow:0 10px 30px rgba(0,0,0,0.4);
+  opacity:0;
+  transform:translateY(20px);
+  transition:0.4s;
+}
+
+.toast.show{
+  opacity:1;
+  transform:translateY(0);
+}
+</style>
+</head>
+
+<body>
+
+<div class="header">
+  <div class="logo">N7</div>
+  <div>N7 Company</div>
+</div>
+
+<div class="container">
+
+<div class="dashboard">
+  <div class="card-mini"><h3>Total</h3><p id="total"></p></div>
+  <div class="card-mini"><h3>Selecionados</h3><p id="selecionados"></p></div>
+  <div class="card-mini"><h3>Enviados</h3><p id="enviadas"></p></div>
+  <div class="card-mini"><h3>Sem envio</h3><p id="naoEnviados"></p></div>
+</div>
+
+<div id="alerta" class="alerta" style="display:none;"></div>
+
+<div class="card">
+  <input id="nome" placeholder="Nome">
+  <input id="numero" placeholder="Número (5599...)">
+  <button class="btn" onclick="addLead()">Adicionar</button>
+</div>
+
+<div class="card">
+  <textarea id="msg" placeholder="Mensagem... use {nome}"></textarea>
+  <button class="btn" onclick="enviar()">Enviar</button>
+  <button class="btn btn-outline" onclick="gerarMensagemIA()">Sugerir mensagem</button>
+  <button class="btn btn-outline" onclick="selecionarTodos()">Selecionar todos</button>
+  <button class="btn btn-outline" onclick="limparSelecionados()">Limpar seleção</button>
+</div>
+
+<div class="card">
+  <div id="lista"></div>
+</div>
+
+</div>
+
+<div id="toast" class="toast"></div>
+
+<script>
+let leads = JSON.parse(localStorage.getItem("leads")) || []
+
+function salvar(){
+  localStorage.setItem("leads", JSON.stringify(leads))
+}
+
+function mostrarToast(){
+  const msgs=[
+    "Lead adicionado. Continue.",
+    "Mais um na base.",
+    "Você está avançando.",
+    "Constância gera venda.",
+    "Foque no processo."
+  ]
+  const t=document.getElementById("toast")
+  t.innerText=msgs[Math.floor(Math.random()*msgs.length)]
+  t.classList.add("show")
+  setTimeout(()=>t.classList.remove("show"),3000)
+}
+
+function addLead(){
+  const nome=document.getElementById("nome").value
+  const numero=document.getElementById("numero").value
+  if(!nome || !numero) return alert("Preencha")
+
+  leads.push({
+    id:Date.now(),
+    nome,
+    numero,
+    selecionado:false,
+    ultimaMsg:null
+  })
+
+  document.getElementById("nome").value=""
+  document.getElementById("numero").value=""
+
+  salvar()
+  render()
+  mostrarToast()
+}
+
+function toggleSelect(id){
+  leads=leads.map(l=>l.id===id?{...l,selecionado:!l.selecionado}:l)
+  salvar();render()
+}
+
+function selecionarTodos(){
+  leads=leads.map(l=>({...l,selecionado:true}))
+  salvar();render()
+}
+
+function limparSelecionados(){
+  leads=leads.map(l=>({...l,selecionado:false}))
+  salvar();render()
+}
+
+function remover(id){
+  leads=leads.filter(l=>l.id!==id)
+  salvar();render()
+}
+
+function enviar(){
+  const msg=document.getElementById("msg").value
+  const agora=Date.now()
+
+  leads=leads.map(l=>{
+    if(l.selecionado){
+      const texto=msg.replace("{nome}",l.nome)
+      window.open(`https://wa.me/${l.numero}?text=${encodeURIComponent(texto)}`,"_blank")
+      return {...l,ultimaMsg:agora}
+    }
+    return l
+  })
+
+  salvar();render()
+}
+
+function gerarMensagemIA(){
+  const lead=leads.find(l=>l.selecionado)
+  if(!lead) return alert("Selecione um lead")
+
+  const msgs=[
+`Olá ${lead.nome}, tudo bem?
+
+Estou entrando em contato pois acredito que posso te ajudar diretamente com o que você procura.
+
+Se fizer sentido, te explico de forma rápida.`,
+
+`Fala ${lead.nome}, passando aqui rápido.
+
+Hoje estou com uma condição interessante e lembrei de você.
+
+Quer que eu te explique?`,
+
+`Olá ${lead.nome}.
+
+Separei algumas oportunidades hoje e seu perfil se encaixa.
+
+Posso te mostrar como funciona?`,
+
+`Oi ${lead.nome}.
+
+Tenho algo direto ao ponto que pode te gerar resultado.
+
+Quer ver agora?`
+  ]
+
+  document.getElementById("msg").value=msgs[Math.floor(Math.random()*msgs.length)]
+}
+
+function atualizarDashboard(){
+  total.innerText=leads.length
+  selecionados.innerText=leads.filter(l=>l.selecionado).length
+  enviadas.innerText=leads.filter(l=>l.ultimaMsg).length
+  naoEnviados.innerText=leads.length - leads.filter(l=>l.ultimaMsg).length
+}
+
+function verificarInativos(){
+  const agora=Date.now()
+  const sete=7*24*60*60*1000
+
+  const inativos=leads.filter(l=>!l.ultimaMsg || (agora-l.ultimaMsg)>sete)
+
+  const alerta=document.getElementById("alerta")
+
+  if(inativos.length){
+    alerta.style.display="block"
+    alerta.innerText=`${inativos.length} leads precisam de follow-up`
+  }else{
+    alerta.style.display="none"
+  }
+}
+
+function render(){
+  lista.innerHTML=""
+
+  const agora=Date.now()
+  const sete=7*24*60*60*1000
+
+  leads.forEach(l=>{
+    const inativo=!l.ultimaMsg || (agora-l.ultimaMsg)>sete
+
+    lista.innerHTML+=`
+    <div class="lead ${inativo?'inativo':''}">
+      <input type="checkbox" ${l.selecionado?'checked':''} onclick="toggleSelect(${l.id})">
+
+      <div class="lead-info">
+        <b>${l.nome}</b>
+        <div class="small">${l.numero}</div>
+        <div class="small">${l.ultimaMsg ? new Date(l.ultimaMsg).toLocaleString() : "Sem envio"}</div>
+      </div>
+
+      <button class="icon-btn" onclick="remover(${l.id})">
+      <svg width="18" height="18" fill="white"><path d="M3 6h18M8 6v14h8V6"/></svg>
+      </button>
+    </div>`
+  })
+
+  atualizarDashboard()
+  verificarInativos()
+}
+
+render()
+</script>
+
+</body>
+</html>
